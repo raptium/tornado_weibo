@@ -23,12 +23,6 @@ The usage is similar to other auth mixins(Google, Facebook, ...) shipped with To
                 redirect_uri="http://example.com/back")
 
         def _on_authorize(self, user, next='/'):
-            if user is None:
-                self.send_error()
-                return
-
-            # session expires in user["session_expires"] sec
-            self.set_secure_cookie("weibo_session",
-                tornado.escape.json_encode(user),
-                math.ceil(user["session_expires"] / 86400.0))
-            self.redirect(next)
+            if not user:
+                raise tornado.web.HTTPError(500, "Weibo auth failed")
+            # Save the user with, e.g., set_secure_cookie()
