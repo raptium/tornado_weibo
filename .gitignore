@@ -1,0 +1,10 @@
+*.pyc
+*.so
+*~
+build
+dist/
+MANIFEST
+tornado_weibo.egg-info
+_auto2to3*
+.tox
+.vagrant
