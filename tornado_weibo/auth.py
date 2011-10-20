@@ -1,6 +1,9 @@
 import os
 import urllib
 import logging
+import mimetools
+import mimetypes
+import itertools
 from tornado.auth import OAuth2Mixin
 from tornado.httputil import url_concat
 from tornado import httpclient
@@ -10,9 +13,7 @@ from tornado import escape
 # we are using our own ca-certs(added GeoTrust CAs) here
 _CA_CERTS = os.path.dirname(__file__) + "/ca-certificates.crt"
 
-
 class WeiboMixin(OAuth2Mixin):
-
     _OAUTH_ACCESS_TOKEN_URL = "https://api.weibo.com/oauth2/access_token?"
     _OAUTH_AUTHORIZE_URL = "https://api.weibo.com/oauth2/authorize?"
     _OAUTH_NO_CALLBACKS = False
@@ -22,7 +23,7 @@ class WeiboMixin(OAuth2Mixin):
         args = {
             "redirect_uri": redirect_uri,
             "client_id": self.settings["weibo_app_key"],
-        }
+            }
         if extra_params:
             args.update(extra_params)
         self.redirect(
@@ -40,7 +41,7 @@ class WeiboMixin(OAuth2Mixin):
             "code": code,
             "client_id": self.settings["weibo_app_key"],
             "client_secret": self.settings["weibo_app_secret"],
-        }
+            }
 
         fields = set(['id', 'name', 'profile_image_url', 'location', 'url'])
         if extra_fields:
@@ -96,8 +97,10 @@ class WeiboMixin(OAuth2Mixin):
         callback(fieldmap)
 
     def weibo_request(self, path, callback, access_token=None,
-                           post_args=None, **args):
+                      post_args=None, **args):
         url = "https://api.weibo.com/2" + path + ".json"
+        if path == "/statuses/upload":
+            return self._weibo_upload_request(url, callback, access_token, args.get("pic"), status=args.get("status"))
         all_args = {}
         if access_token:
             all_args["access_token"] = access_token
@@ -109,14 +112,101 @@ class WeiboMixin(OAuth2Mixin):
         http = httpclient.AsyncHTTPClient()
         if post_args is not None:
             http.fetch(url, method="POST", body=urllib.urlencode(post_args),
-                       callback=callback, ca_certs=_CA_CERTS)
+                callback=callback, ca_certs=_CA_CERTS)
         else:
             http.fetch(url, callback=callback, ca_certs=_CA_CERTS)
 
+    def _weibo_upload_request(self, url, callback, access_token, pic, status=None):
+        # /statuses/upload is special
+        if pic is None:
+            raise Exception("pic not filled!")
+        form = MultiPartForm()
+        form.add_file("pic", pic["filename"], pic["content"], pic["mime_type"])
+
+        form.add_field("status", status)
+        headers = {
+            "Content-Type": form.get_content_type(),
+            }
+        args = {
+            "access_token": access_token
+        }
+        url += "?" + urllib.urlencode(args)
+        http = httpclient.AsyncHTTPClient()
+        http.fetch(url, method="POST", body=str(form),
+            callback=self.async_callback(self._on_weibo_request, callback),
+            headers=headers,
+            ca_certs=_CA_CERTS)
+
     def _on_weibo_request(self, callback, response):
         if response.error:
-            logging.warning("Error response %s fetching %s", response.error,
-                            response.request.url)
+            logging.warning("Error response %s fetching %s, body %s",
+                response.error,
+                response.request.url,
+                response.body
+            )
             callback(None)
             return
         callback(escape.json_decode(response.body))
+
+
+class MultiPartForm(object):
+    """Accumulate the data to be used when posting a form."""
+
+    def __init__(self):
+        self.form_fields = []
+        self.files = []
+        self.boundary = mimetools.choose_boundary()
+        return
+
+    def get_content_type(self):
+        return 'multipart/form-data; boundary=%s' % self.boundary
+
+    def add_field(self, name, value):
+        """Add a simple field to the form data."""
+        self.form_fields.append((name, value))
+        return
+
+    def add_file(self, fieldname, filename, body, mimetype=None):
+        """Add a file to be uploaded."""
+        if mimetype is None:
+            mimetype = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+        self.files.append((fieldname, filename, mimetype, body))
+        return
+
+    def __str__(self):
+        """Return a string representing the form data, including attached files."""
+        # Build a list of lists, each containing "lines" of the
+        # request.  Each part is separated by a boundary string.
+        # Once the list is built, return a string where each
+        # line is separated by '\r\n'.
+        parts = []
+        part_boundary = '--' + self.boundary
+
+        # Add the form fields
+        parts.extend(
+            [part_boundary,
+             'Content-Disposition: form-data; name="%s"' % name,
+             '',
+             value,
+             ]
+            for name, value in self.form_fields
+        )
+
+        # Add the files to upload
+        parts.extend(
+            [part_boundary,
+             'Content-Disposition: form-data; name="%s"; filename="%s"' %\
+             (field_name, filename),
+             'Content-Type: %s' % content_type,
+             '',
+             body,
+             ]
+            for field_name, filename, content_type, body in self.files
+        )
+
+        # Flatten the list and add closing boundary marker,
+        # then return CR+LF separated data
+        flattened = list(itertools.chain(*parts))
+        flattened.append('--' + self.boundary + '--')
+        flattened.append('')
+        return '\r\n'.join(flattened)
