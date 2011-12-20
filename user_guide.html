@@ -57,12 +57,12 @@
 <h1>User Guide<a class="headerlink" href="#user-guide" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
-<p>tornado_weibo is not in the CheeseShop, it is still easy to install if
-you are with <cite>pip</cite> and <cite>git</cite>:</p>
+<p>It is still easy to install if you are with <cite>pip</cite> and <cite>git</cite>:</p>
 <div class="highlight-sh"><div class="highlight"><pre>pip install git+git://github.com/raptium/tornado_weibo.git
 </pre></div>
 </div>
-<p>Or you may manually download the archive from github and run <tt class="docutils literal"><span class="pre">python</span> <span class="pre">setup.py</span> <span class="pre">install</span></tt>.</p>
+<p>Otherwise you may manually download the <a class="reference external" href="https://github.com/raptium/tornado_weibo/zipball/master">archive</a> from github, extract the
+archive to somewhere and run <tt class="docutils literal"><span class="pre">python</span> <span class="pre">setup.py</span> <span class="pre">install</span></tt>.</p>
 </div>
 <div class="section" id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
@@ -72,40 +72,91 @@ you are with <cite>pip</cite> and <cite>git</cite>:</p>
 authorized by the user, i.e. get the <tt class="docutils literal"><span class="pre">access_token</span></tt> of the corresponding
 user. This is usually done in two steps:</p>
 <ul class="simple">
-<li>Call <a class="reference internal" href="modules/auth.html#tornado_weibo.auth.WeiboMixin.authorize_redirect" title="tornado_weibo.auth.WeiboMixin.authorize_redirect"><tt class="xref py py-func docutils literal"><span class="pre">WeiboMixin.authorize_redirect()</span></tt></a> to get an authorization code</li>
-<li>Call <tt class="xref py py-func docutils literal"><span class="pre">WeiboMixin.get_authenticate_user()</span></tt> with the code you got in the
-first step to get an user dict. <tt class="docutils literal"><span class="pre">access_token</span></tt> is set in the user dict, you
+<li>Call <a class="reference internal" href="modules/auth.html#tornado_weibo.auth.WeiboMixin.authorize_redirect" title="tornado_weibo.auth.WeiboMixin.authorize_redirect"><tt class="xref py py-func docutils literal"><span class="pre">WeiboMixin.authorize_redirect()</span></tt></a> to get an authorization code.
+User will be redirect to Weibo and be prompted if he/she want to
+allow the authorization. Once the user makes decision, he/she will be
+redirected to the callback url you specified.</li>
+<li>Call <a class="reference internal" href="modules/auth.html#tornado_weibo.auth.WeiboMixin.get_authenticated_user" title="tornado_weibo.auth.WeiboMixin.get_authenticated_user"><tt class="xref py py-func docutils literal"><span class="pre">WeiboMixin.get_authenticated_user()</span></tt></a> with the code you got in the
+first step, a dict containing user information will be passed to the callback
+function. <tt class="docutils literal"><span class="pre">access_token</span></tt> is also set in the user dict, you
 may want to store it in database/session so that it can be used later.</li>
 </ul>
 <p>Example:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">AuthenticationHandler</span><span class="p">(</span><span class="n">tornado</span><span class="o">.</span><span class="n">web</span><span class="o">.</span><span class="n">RequestHandler</span><span class="p">,</span> <span class="n">WeiboMixin</span><span class="p">):</span>
-    <span class="nd">@tornado.web.asynchronous</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">AuthenticationHandler</span><span class="p">(</span><span class="n">RequestHandler</span><span class="p">,</span> <span class="n">WeiboMixin</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">code</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_argument</span><span class="p">(</span><span class="s">&quot;code&quot;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">code</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">get_authenticated_user</span><span class="p">(</span>
-                <span class="n">redirect_uri</span><span class="o">=</span><span class="s">&#39;http://example.net/callback&#39;</span><span class="p">,</span>
-                <span class="n">code</span><span class="o">=</span><span class="n">code</span><span class="p">,</span>
-                <span class="n">callback</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">async_callback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_authorize</span><span class="p">)</span>
-            <span class="p">)</span>
-            <span class="k">return</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">authorize_redirect</span><span class="p">(</span>
-            <span class="n">redirect_uri</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">[</span><span class="s">&quot;weibo_callback_uri&quot;</span><span class="p">])</span>
+        <span class="c"># the callback URL should be the same with that on your app info page.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">authorize_redirect</span><span class="p">(</span><span class="n">redirect_uri</span><span class="o">=</span><span class="s">&#39;http://example.net/callback&#39;</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_on_authorize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
+
+<span class="k">class</span> <span class="nc">CallbackHandler</span><span class="p">(</span><span class="n">RequestHandler</span><span class="p">,</span> <span class="n">WeiboMixin</span><span class="p">):</span>
+    <span class="nd">@asynchronous</span>
+    <span class="nd">@gen.engine</span>
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">gen</span><span class="o">.</span><span class="n">Task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_authenticated_user</span><span class="p">,</span>
+            <span class="n">redirect_uri</span><span class="o">=</span><span class="s">&#39;http://example.net/callback&#39;</span><span class="p">,</span>
+            <span class="n">code</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_argument</span><span class="p">(</span><span class="s">&quot;code&quot;</span><span class="p">)</span> <span class="c"># code is set if user accepts the authorization request</span>
+        <span class="p">)</span>
         <span class="k">if</span> <span class="n">user</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">send_error</span><span class="p">()</span>
-            <span class="k">return</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">set_cookie</span><span class="p">(</span><span class="s">&quot;uid&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">user</span><span class="p">[</span><span class="s">&quot;id&quot;</span><span class="p">]))</span> <span class="c"># get user id</span>
-        <span class="c"># store the access_token</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">set_secure_cookie</span><span class="p">(</span><span class="s">&quot;weibo_access_token&quot;</span><span class="p">,</span> <span class="n">user</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_cookie</span><span class="p">(</span><span class="s">&quot;uid&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">user</span><span class="p">[</span><span class="s">&quot;id&quot;</span><span class="p">]))</span> <span class="c"># get user id</span>
+            <span class="c"># store the access_token to cookie, perhaps not a good choice</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_secure_cookie</span><span class="p">(</span><span class="s">&quot;weibo_access_token&quot;</span><span class="p">,</span> <span class="n">user</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="send-weibo-api-request">
-<h3>Send Weibo API Request<a class="headerlink" href="#send-weibo-api-request" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="consume-the-weibo-api">
+<h3>Consume the Weibo API<a class="headerlink" href="#consume-the-weibo-api" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference internal" href="modules/auth.html#tornado_weibo.auth.WeiboMixin.weibo_request" title="tornado_weibo.auth.WeiboMixin.weibo_request"><tt class="xref py py-func docutils literal"><span class="pre">WeiboMixin.weibo_request()</span></tt></a> is a helper function to send Weibo API
+requests, you should provide parameters according to the Weibo API specification.
+The response message will be parsed automatically and the result is
+passed to the callback function. If <tt class="docutils literal"><span class="pre">post_args</span></tt> is given, the request
+will be sent using POST method with <tt class="docutils literal"><span class="pre">post_args</span></tt>. Anything in the keyword
+arguments will sent as HTTP query string.</p>
+<p>The following snippet fetches the latest 200 statuses of current user:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">UserTimelineHandler</span><span class="p">(</span><span class="n">RequestHandler</span><span class="p">,</span> <span class="n">WeiboMixin</span><span class="p">):</span>
+    <span class="nd">@tornado.web.asynchronous</span>
+    <span class="nd">@tornado.web.authenticated</span>
+    <span class="nd">@tornado.gen.engine</span>
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># fetch usertime</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">tornado</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">Task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weibo_request</span><span class="p">,</span>
+            <span class="s">&quot;/statuses/user_timeline&quot;</span><span class="p">,</span>
+            <span class="n">access_token</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_user</span><span class="p">[</span><span class="s">&quot;access_token&quot;</span><span class="p">],</span>
+            <span class="n">count</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+            <span class="n">uid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_user</span><span class="p">[</span><span class="s">&quot;id&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="c"># do something with the results</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>To send a request to <tt class="docutils literal"><span class="pre">/statuses/upload</span></tt>, the <tt class="docutils literal"><span class="pre">pic</span></tt> parameter is
+required and it should be a dict with <tt class="docutils literal"><span class="pre">filename</span></tt>, <tt class="docutils literal"><span class="pre">content</span></tt> and
+<tt class="docutils literal"><span class="pre">mime_type</span></tt> set.</p>
+<p>Example:</p>
+<div class="last highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">UploadHandler</span><span class="p">(</span><span class="n">RequestHandler</span><span class="p">,</span> <span class="n">WeiboMixin</span><span class="p">):</span>
+    <span class="nd">@asynchronous</span>
+    <span class="nd">@gen.engine</span>
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># ...</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;foo.png&#39;</span><span class="p">,</span> <span class="s">&#39;r&#39;</span><span class="p">)</span>
+        <span class="n">pic</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s">&#39;filename&#39;</span><span class="p">:</span> <span class="s">&#39;foo.png&#39;</span><span class="p">,</span>
+            <span class="s">&#39;content&#39;</span><span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span>
+            <span class="s">&#39;mime_type&#39;</span><span class="p">:</span> <span class="s">&#39;image/png&#39;</span>
+        <span class="p">}</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">gen</span><span class="o">.</span><span class="n">Task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weibo_request</span><span class="p">,</span> <span class="s">&#39;statuses/upload&#39;</span><span class="p">,</span>
+            <span class="n">access_token</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_user</span><span class="p">[</span><span class="s">&quot;access_token&quot;</span><span class="p">],</span>
+            <span class="n">status</span><span class="o">=</span><span class="s">&#39;I like this photo!&#39;</span><span class="p">,</span>
+            <span class="n">pic</span><span class="o">=</span><span class="n">pic</span>
+        <span class="p">)</span>
+        <span class="c"># do something with the result ...</span>
+</pre></div>
+</div>
+</div>
 </div>
 </div>
 <div class="section" id="settings">
@@ -140,7 +191,7 @@ tornado_weibo reads it&#8217;s settings from your tornado application setting:</
 <li><a class="reference internal" href="#installation">Installation</a></li>
 <li><a class="reference internal" href="#usage">Usage</a><ul>
 <li><a class="reference internal" href="#get-the-access-code">Get the Access Code</a></li>
-<li><a class="reference internal" href="#send-weibo-api-request">Send Weibo API Request</a></li>
+<li><a class="reference internal" href="#consume-the-weibo-api">Consume the Weibo API</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#settings">Settings</a></li>
