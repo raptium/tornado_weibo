@@ -1,0 +1,160 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>API Documentation &mdash; tornado_weibo 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="tornado_weibo 0.1 documentation" href="../index.html" />
+    <link rel="prev" title="User Guide" href="../user_guide.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../user_guide.html" title="User Guide"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">tornado_weibo 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-tornado_weibo.auth">
+<span id="api-documentation"></span><h1>API Documentation<a class="headerlink" href="#module-tornado_weibo.auth" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="tornado_weibo.auth.WeiboMixin">
+<em class="property">class </em><tt class="descclassname">tornado_weibo.auth.</tt><tt class="descname">WeiboMixin</tt><a class="headerlink" href="#tornado_weibo.auth.WeiboMixin" title="Permalink to this definition">¶</a></dt>
+<dd><p>RequestHandler mixin for weibo authentication.</p>
+<dl class="method">
+<dt id="tornado_weibo.auth.WeiboMixin.authorize_redirect">
+<tt class="descname">authorize_redirect</tt><big>(</big><em>redirect_uri</em>, <em>extra_params=None</em><big>)</big><a class="headerlink" href="#tornado_weibo.auth.WeiboMixin.authorize_redirect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Redirect user to the weibo authorization page.</p>
+<p>User will be redirected to <tt class="docutils literal"><span class="pre">redirect_uri</span></tt> after he/she accepts/rejects
+the authorization request. If the user accepts the request, <tt class="docutils literal"><span class="pre">redirect_uri</span></tt>
+will be visited with <tt class="docutils literal"><span class="pre">code</span></tt> parameter in HTTP GET, usually
+<tt class="docutils literal"><span class="pre">code</span></tt> will be further filled to <a class="reference internal" href="#tornado_weibo.auth.WeiboMixin.get_authenticated_user" title="tornado_weibo.auth.WeiboMixin.get_authenticated_user"><tt class="xref py py-func docutils literal"><span class="pre">get_authenticated_user()</span></tt></a>
+to obtain the <tt class="docutils literal"><span class="pre">access_code</span></tt> for later use.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tornado_weibo.auth.WeiboMixin.get_authenticated_user">
+<tt class="descname">get_authenticated_user</tt><big>(</big><em>redirect_uri</em>, <em>code</em>, <em>callback</em>, <em>extra_fields=None</em><big>)</big><a class="headerlink" href="#tornado_weibo.auth.WeiboMixin.get_authenticated_user" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the authenticated user by given <tt class="docutils literal"><span class="pre">authorization_code</span></tt></p>
+<p>The <tt class="docutils literal"><span class="pre">callback</span></tt> function will be called with response of
+<tt class="docutils literal"><span class="pre">/users/show</span></tt> which is a dict with some information
+of specific user. <tt class="docutils literal"><span class="pre">access_token</span></tt> and <tt class="docutils literal"><span class="pre">session_expires</span></tt>
+are also set in this dict, you should store <tt class="docutils literal"><span class="pre">access_token</span></tt>
+to database/session for later use.</p>
+<p>This function calls <tt class="docutils literal"><span class="pre">OAuth2/access_token</span></tt>, <tt class="docutils literal"><span class="pre">/account/get_uid</span></tt>
+and <tt class="docutils literal"><span class="pre">/users/show</span></tt> internally, see
+<a class="reference external" href="http://open.weibo.com/wiki/OAuth2/access_token">http://open.weibo.com/wiki/OAuth2/access_token</a></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tornado_weibo.auth.WeiboMixin.weibo_request">
+<tt class="descname">weibo_request</tt><big>(</big><em>path</em>, <em>callback</em>, <em>access_token=None</em>, <em>post_args=None</em>, <em>**args</em><big>)</big><a class="headerlink" href="#tornado_weibo.auth.WeiboMixin.weibo_request" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is a helper function to send Weibo API requests.</p>
+<p><tt class="docutils literal"><span class="pre">path</span></tt> should be set to the API path which the request is sent to,
+e.g. <tt class="docutils literal"><span class="pre">'statuses/public_timeline'</span></tt></p>
+<p>The <tt class="docutils literal"><span class="pre">callback</span></tt> function will be called when the request finishes.
+The response json will be decoded and passed to the callback function.</p>
+<p>If <tt class="docutils literal"><span class="pre">post_args</span></tt> is given, the request will be sent using POST method
+with <tt class="docutils literal"><span class="pre">post_args</span></tt>. Other parameters given in <tt class="docutils literal"><span class="pre">args</span></tt> will be send
+as HTTP GET parameters.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">For <tt class="docutils literal"><span class="pre">/statuses/upload</span></tt> method, the <tt class="docutils literal"><span class="pre">pic</span></tt> parameter is
+required and it should be a dict with key <tt class="docutils literal"><span class="pre">filename</span></tt>, <tt class="docutils literal"><span class="pre">content</span></tt> and
+<tt class="docutils literal"><span class="pre">mime_type</span></tt>. <tt class="docutils literal"><span class="pre">/statuses/upload</span></tt> requires a <tt class="docutils literal"><span class="pre">multipart/form-data</span></tt>
+post request, therefore it must be handled differently. tornado_weibo
+already knows how to construct a <tt class="docutils literal"><span class="pre">multipart/form-data</span></tt> request, so you
+don&#8217;t have to do extra work besides providing the <tt class="docutils literal"><span class="pre">pic</span></tt> dict.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../user_guide.html"
+                        title="previous chapter">User Guide</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/modules/auth.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../user_guide.html" title="User Guide"
+             >previous</a> |</li>
+        <li><a href="../index.html">tornado_weibo 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Guan Hao.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+  </body>
+</html>
