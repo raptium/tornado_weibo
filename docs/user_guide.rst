@@ -33,30 +33,26 @@ Example::
   class AuthenticationHandler(tornado.web.RequestHandler, WeiboMixin):
       @tornado.web.asynchronous
       def get(self):
-          self.require_setting("weibo_callback_uri")
           code = self.get_argument("code", None)
           if code:
               self.get_authenticated_user(
-                  redirect_uri=self.settings["weibo_callback_uri"],
+                  redirect_uri='http://example.net/callback',
                   code=code,
-                  callback=self.async_callback(self._on_authorize,
-                      next=self.get_cookie("login_next", "/"))
+                  callback=self.async_callback(self._on_authorize)
               )
               return
-          if self.get_argument("next"):
-              self.set_cookie("login_next", self.get_argument("next"))
           self.authorize_redirect(
               redirect_uri=self.settings["weibo_callback_uri"])
 
-      def _on_authorize(self, user, next='/'):
+      def _on_authorize(self, user):
           if user is None:
               self.send_error()
               return
 
-          self.set_cookie("uid", str(user["id"])) # session cookie
-          self.set_secure_cookie("weibo_session",
-              tornado.escape.json_encode(user), 1)
-          self.redirect(next)
+          self.set_cookie("uid", str(user["id"])) # get user id
+          # store the access_token
+          self.set_secure_cookie("weibo_access_token", user.access_token, 1)
+          self.redirect('/')
 
 
 Send Weibo API Request
