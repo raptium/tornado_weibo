@@ -14,7 +14,7 @@ _CA_CERTS = os.path.dirname(__file__) + "/ca-certificates.crt"
 
 class WeiboMixin(OAuth2Mixin):
     """
-    RequestHandler mixin for weibo authentication.
+    The :class:`tornado.web.RequestHandler` mixin.
     """
     _OAUTH_ACCESS_TOKEN_URL = "https://api.weibo.com/oauth2/access_token?"
     _OAUTH_AUTHORIZE_URL = "https://api.weibo.com/oauth2/authorize?"
@@ -126,24 +126,25 @@ class WeiboMixin(OAuth2Mixin):
         This is a helper function to send Weibo API requests.
 
         ``path`` should be set to the API path which the request is sent to,
-        e.g. ``'statuses/public_timeline'``
+        e.g. ``'statuses/public_timeline'``.
 
-        The ``callback`` function will be called when the request finishes.
-        The response json will be decoded and passed to the callback function.
+        A dict containing user information will be passed to ``callback``
+        function.
 
         If ``post_args`` is given, the request will be sent using POST method
-        with ``post_args``. Other parameters given in ``args`` will be send
-        as HTTP GET parameters.
+        with ``post_args``. Anything in the keyword arguments will sent
+        as HTTP query string.
 
         .. note:: For ``/statuses/upload`` method, the ``pic`` parameter is
            required and it should be a dict with key ``filename``, ``content`` and
            ``mime_type``. ``/statuses/upload`` requires a ``multipart/form-data``
            post request, therefore it must be handled differently. tornado_weibo
            already knows how to construct a ``multipart/form-data`` request, so you
-           don't have to do extra work besides providing the ``pic`` dict.
+           don't have to do extra work besides providing the ``pic`` dict. See
+           http://open.weibo.com/wiki/Statuses/upload
         """
         url = "https://api.weibo.com/2" + path + ".json"
-        if path == "/statuses/upload":
+        if path == "/statuses/upload": # this request should be handled differently
             return self._weibo_upload_request(url, callback,
                 access_token, args.get("pic"), status=args.get("status"))
         all_args = {}
@@ -196,7 +197,10 @@ class WeiboMixin(OAuth2Mixin):
 
 
 class MultiPartForm(object):
-    """Helper class to build a multipart form"""
+    """Helper class to build a multipart form
+
+    This part was copied from http://www.doughellmann.com/PyMOTW/urllib2/
+    """
 
     def __init__(self):
         self.form_fields = []
