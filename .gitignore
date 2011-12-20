@@ -8,3 +8,6 @@ tornado_weibo.egg-info
 _auto2to3*
 .tox
 .vagrant
+
+docs/_*
+*.mo

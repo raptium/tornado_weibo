@@ -12,13 +12,24 @@ from tornado import escape
 # we are using our own ca-certs(added GeoTrust CAs) here
 _CA_CERTS = os.path.dirname(__file__) + "/ca-certificates.crt"
 
-
 class WeiboMixin(OAuth2Mixin):
+    """
+    RequestHandler mixin for weibo authentication.
+    """
     _OAUTH_ACCESS_TOKEN_URL = "https://api.weibo.com/oauth2/access_token?"
     _OAUTH_AUTHORIZE_URL = "https://api.weibo.com/oauth2/authorize?"
     _OAUTH_NO_CALLBACKS = False
 
     def authorize_redirect(self, redirect_uri, extra_params=None):
+        """
+        Redirect user to the weibo authorization page.
+
+        User will be redirected to ``redirect_uri`` after he/she accepts/rejects
+        the authorization request. If the user accepts the request, ``redirect_uri``
+        will be visited with ``code`` parameter in HTTP GET, usually
+        ``code`` will be further filled to :func:`get_authenticated_user`
+        to obtain the ``access_code`` for later use.
+        """
         self.require_setting("weibo_app_key", "Weibo OAuth2")
         args = {
             "redirect_uri": redirect_uri,
@@ -32,6 +43,19 @@ class WeiboMixin(OAuth2Mixin):
 
     def get_authenticated_user(self, redirect_uri,
                                code, callback, extra_fields=None):
+        """
+        Get the authenticated user by given ``authorization_code``
+
+        The ``callback`` function will be called with response of
+        ``/users/show`` which is a dict with some information
+        of specific user. ``access_token`` and ``session_expires``
+        are also set in this dict, you should store ``access_token``
+        to database/session for later use.
+
+        This function calls ``OAuth2/access_token``, ``/account/get_uid``
+        and ``/users/show`` internally, see
+        http://open.weibo.com/wiki/OAuth2/access_token
+        """
         self.require_setting("weibo_app_key", "Weibo OAuth2")
         self.require_setting("weibo_app_secret", "Weibo OAuth2")
         http = httpclient.AsyncHTTPClient()
@@ -43,7 +67,7 @@ class WeiboMixin(OAuth2Mixin):
             "client_secret": self.settings["weibo_app_secret"],
             }
 
-        fields = set(['id', 'name', 'profile_image_url', 'location', 'url'])
+        fields = {'id', 'name', 'profile_image_url', 'location', 'url'}
         if extra_fields:
             fields.update(extra_fields)
 
@@ -98,10 +122,25 @@ class WeiboMixin(OAuth2Mixin):
 
     def weibo_request(self, path, callback, access_token=None,
                       post_args=None, **args):
-        """Send a Weibo api request
+        """
+        This is a helper function to send Weibo API requests.
 
-        if post_args is not None, the request will be sent using POST method
-        The response json will be decoded and use as param for callback
+        ``path`` should be set to the API path which the request is sent to,
+        e.g. ``'statuses/public_timeline'``
+
+        The ``callback`` function will be called when the request finishes.
+        The response json will be decoded and passed to the callback function.
+
+        If ``post_args`` is given, the request will be sent using POST method
+        with ``post_args``. Other parameters given in ``args`` will be send
+        as HTTP GET parameters.
+
+        .. note:: For ``/statuses/upload`` method, the ``pic`` parameter is
+           required and it should be a dict with key ``filename``, ``content`` and
+           ``mime_type``. ``/statuses/upload`` requires a ``multipart/form-data``
+           post request, therefore it must be handled differently. tornado_weibo
+           already knows how to construct a ``multipart/form-data`` request, so you
+           don't have to do extra work besides providing the ``pic`` dict.
         """
         url = "https://api.weibo.com/2" + path + ".json"
         if path == "/statuses/upload":
@@ -157,7 +196,7 @@ class WeiboMixin(OAuth2Mixin):
 
 
 class MultiPartForm(object):
-    """Accumulate the data to be used when posting a form."""
+    """Helper class to build a multipart form"""
 
     def __init__(self):
         self.form_fields = []
